@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getTodayLocal } from '@/lib/formatters'
 
 type Props = {
   open: boolean
@@ -39,6 +40,8 @@ export function CustoFixoFormDialog({ open, onOpenChange, custo, onSuccess }: Pr
     dia_vencimento: '',
     ativo: true,
     observacoes: '',
+    data_inicio: getTodayLocal(),
+    data_fim: '',
   })
 
   const supabase = createClient()
@@ -52,6 +55,8 @@ export function CustoFixoFormDialog({ open, onOpenChange, custo, onSuccess }: Pr
         dia_vencimento: String(custo.dia_vencimento || ''),
         ativo: custo.ativo ?? true,
         observacoes: custo.observacoes || '',
+        data_inicio: custo.data_inicio || getTodayLocal(),
+        data_fim: custo.data_fim || '',
       })
     } else {
       setFormData({
@@ -61,6 +66,8 @@ export function CustoFixoFormDialog({ open, onOpenChange, custo, onSuccess }: Pr
         dia_vencimento: '',
         ativo: true,
         observacoes: '',
+        data_inicio: getTodayLocal(),
+        data_fim: '',
       })
     }
   }, [custo, open])
@@ -77,6 +84,8 @@ export function CustoFixoFormDialog({ open, onOpenChange, custo, onSuccess }: Pr
         dia_vencimento: formData.dia_vencimento ? parseInt(formData.dia_vencimento) : null,
         ativo: formData.ativo,
         observacoes: formData.observacoes || null,
+        data_inicio: formData.data_inicio,
+        data_fim: formData.data_fim || null,
       }
 
       if (custo) {
@@ -158,6 +167,33 @@ export function CustoFixoFormDialog({ open, onOpenChange, custo, onSuccess }: Pr
               onChange={(e) => setFormData({ ...formData, dia_vencimento: e.target.value })}
               placeholder="Ex: 10"
             />
+          </div>
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+            <p className="text-xs font-semibold">📆 Vigência (em quais meses esse custo aparece)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Data início *</Label>
+                <Input
+                  type="date"
+                  value={formData.data_inicio}
+                  onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Data fim (opcional)</Label>
+                <Input
+                  type="date"
+                  value={formData.data_fim}
+                  onChange={(e) => setFormData({ ...formData, data_fim: e.target.value })}
+                  placeholder="Vazio = sem fim"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Deixe a data fim vazia se o custo é contínuo. Use a data fim se cancelar/encerrar em um mês específico.
+            </p>
           </div>
 
           <div className="space-y-2">

@@ -5,11 +5,12 @@ import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Check, Edit, Trash2, Calendar, CalendarCheck, CalendarX, Download } from 'lucide-react'
+import { Plus, Check, Edit, Trash2, Calendar, CalendarCheck, CalendarX, Download, List, LayoutGrid } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { AgendamentoFormDialog } from './agendamento-form-dialog'
 import { ProjetoFormDialog } from './projeto-form-dialog'
+import { CalendarioView } from './calendario-view'
 import { formatDate, getTodayLocal, dateToLocalString } from '@/lib/formatters'
 import { useRealtime } from '@/lib/use-realtime'
 
@@ -21,6 +22,8 @@ export default function AgendaPage() {
   const [editingAgendamento, setEditingAgendamento] = useState<any>(null)
   const [agendamentoParaProjeto, setAgendamentoParaProjeto] = useState<any>(null)
   const [filtroPeriodo, setFiltroPeriodo] = useState('proximos_7')
+  const [visao, setVisao] = useState<'lista' | 'calendario'>('lista')
+  const [mesCalendario, setMesCalendario] = useState(new Date())
 
   const supabase = createClient()
 
@@ -33,7 +36,14 @@ export default function AgendaPage() {
       .order('data', { ascending: true })
       .order('hora_inicio', { ascending: true })
 
-    if (filtroPeriodo === 'hoje') {
+    if (visao === 'calendario') {
+      // Visão calendário: busca o mês inteiro
+      const ano = mesCalendario.getFullYear()
+      const mes = mesCalendario.getMonth()
+      const inicio = dateToLocalString(new Date(ano, mes, 1))
+      const fim = dateToLocalString(new Date(ano, mes + 1, 0))
+      query = query.gte('data', inicio).lte('data', fim)
+    } else if (filtroPeriodo === 'hoje') {
       query = query.eq('data', hoje)
     } else if (filtroPeriodo === 'amanha') {
       const amanha = new Date()
@@ -62,7 +72,7 @@ export default function AgendaPage() {
 
   useEffect(() => {
     loadAgendamentos()
-  }, [filtroPeriodo])
+  }, [filtroPeriodo, visao, mesCalendario])
 
   // 🔴 Realtime: recarrega quando alguém da equipe adiciona/edita/exclui agendamento
   useRealtime('agendamentos', loadAgendamentos)
@@ -156,38 +166,93 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="flex gap-2 mb-6">
-        <Button
-          variant={filtroPeriodo === 'hoje' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFiltroPeriodo('hoje')}
-        >
-          Hoje
-        </Button>
-        <Button
-          variant={filtroPeriodo === 'amanha' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFiltroPeriodo('amanha')}
-        >
-          Amanhã
-        </Button>
-        <Button
-          variant={filtroPeriodo === 'semana' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFiltroPeriodo('semana')}
-        >
-          Esta Semana
-        </Button>
-        <Button
-          variant={filtroPeriodo === 'proximos_7' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFiltroPeriodo('proximos_7')}
-        >
-          Próximos 7 dias
-        </Button>
+      {/* Toggle visão Lista / Calendário */}
+      <div className="flex justify-between items-center mb-4">
+        {/* Filtros (só na visão lista) */}
+        {visao === 'lista' && (
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={filtroPeriodo === 'hoje' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFiltroPeriodo('hoje')}
+            >
+              Hoje
+            </Button>
+            <Button
+              variant={filtroPeriodo === 'amanha' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFiltroPeriodo('amanha')}
+            >
+              Amanhã
+            </Button>
+            <Button
+              variant={filtroPeriodo === 'semana' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFiltroPeriodo('semana')}
+            >
+              Esta Semana
+            </Button>
+            <Button
+              variant={filtroPeriodo === 'proximos_7' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFiltroPeriodo('proximos_7')}
+            >
+              Próximos 7 dias
+            </Button>
+          </div>
+        )}
+        {visao === 'calendario' && <div />}
+
+        {/* Toggle visão */}
+        <div className="flex border rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setVisao('lista')}
+            className={`px-3 py-1.5 text-sm flex items-center gap-1.5 ${
+              visao === 'lista' ? 'bg-slate-900 text-white' : 'bg-white hover:bg-muted'
+            }`}
+          >
+            <List className="h-4 w-4" />
+            Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisao('calendario')}
+            className={`px-3 py-1.5 text-sm flex items-center gap-1.5 ${
+              visao === 'calendario' ? 'bg-slate-900 text-white' : 'bg-white hover:bg-muted'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Calendário
+          </button>
+        </div>
       </div>
 
+      {/* VISÃO CALENDÁRIO */}
+      {visao === 'calendario' && (
+        <Card>
+          <CardContent className="p-6">
+            <CalendarioView
+              agendamentos={agendamentos}
+              mesAtual={mesCalendario}
+              onMudarMes={setMesCalendario}
+              onClickDia={(dataStr) => {
+                // Cria novo agendamento no dia clicado
+                setEditingAgendamento({ data: dataStr, hora_inicio: '09:00', hora_fim: '11:00' })
+                setOpenDialog(true)
+              }}
+              onClickAgendamento={(ag) => {
+                setEditingAgendamento(ag)
+                setOpenDialog(true)
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* VISÃO LISTA */}
+      {visao === 'lista' && (
+        <>
       {loading ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">Carregando...</CardContent>
@@ -274,6 +339,8 @@ export default function AgendaPage() {
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
 
       <AgendamentoFormDialog

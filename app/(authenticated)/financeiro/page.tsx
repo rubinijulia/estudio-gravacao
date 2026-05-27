@@ -66,6 +66,8 @@ export default function FinanceiroPage() {
     dataFim.setMonth(dataFim.getMonth() + 1)
     const fim = dateToLocalString(dataFim)
 
+    const ultimoDiaMes = dateToLocalString(new Date(dataFim.getTime() - 1))
+
     const [rec, cf, cv, vds] = await Promise.all([
       supabase
         .from('recebimentos')
@@ -73,7 +75,13 @@ export default function FinanceiroPage() {
         .gte('data_recebimento', inicio)
         .lt('data_recebimento', fim)
         .order('data_recebimento', { ascending: false }),
-      supabase.from('custos_fixos').select('*').order('valor', { ascending: false }),
+      // Custos fixos: filtra por vigência (data_inicio <= último dia do mês AND (data_fim >= primeiro dia do mês OR data_fim IS NULL))
+      supabase
+        .from('custos_fixos')
+        .select('*')
+        .lte('data_inicio', ultimoDiaMes)
+        .or(`data_fim.is.null,data_fim.gte.${inicio}`)
+        .order('valor', { ascending: false }),
       supabase
         .from('custos_variaveis')
         .select('*, users_profile(nome)')

@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Check, Edit, Trash2, Calendar, CalendarCheck, CalendarX } from 'lucide-react'
+import { Plus, Check, Edit, Trash2, Calendar, CalendarCheck, CalendarX, Download } from 'lucide-react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { AgendamentoFormDialog } from './agendamento-form-dialog'
 import { ProjetoFormDialog } from './projeto-form-dialog'
@@ -141,10 +142,18 @@ export default function AgendaPage() {
           <h1 className="text-3xl font-bold">Agenda</h1>
           <p className="text-muted-foreground mt-1">Gravações e compromissos</p>
         </div>
-        <Button onClick={() => { setEditingAgendamento(null); setOpenDialog(true) }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agendamento
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/agenda/importar">
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Importar do Google
+            </Button>
+          </Link>
+          <Button onClick={() => { setEditingAgendamento(null); setOpenDialog(true) }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agendamento
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}

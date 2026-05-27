@@ -242,55 +242,6 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Alerta de cadastros incompletos */}
-      {clientesIncompletos.length > 0 && (
-        <Card className="border-orange-300 bg-orange-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-orange-700">
-              <UserX className="h-5 w-5" />
-              {clientesIncompletos.length} cadastro{clientesIncompletos.length > 1 ? 's' : ''} incompleto{clientesIncompletos.length > 1 ? 's' : ''}
-            </CardTitle>
-            <CardDescription className="text-orange-700/80">
-              Clientes com informações faltando — complete para melhor organização
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {clientesIncompletos.slice(0, 5).map(c => (
-                <Link
-                  key={c.id}
-                  href="/clientes"
-                  className="flex items-center justify-between p-3 bg-white border border-orange-200 rounded-lg hover:bg-orange-100"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{c.nome}</div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      ID: {c.id.substring(0, 8)}
-                    </div>
-                    {c.faltam && c.faltam.length > 0 && (
-                      <div className="text-xs text-orange-700 mt-1">
-                        Faltam: {c.faltam.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                  <Button size="sm" variant="outline">
-                    Completar
-                  </Button>
-                </Link>
-              ))}
-              {clientesIncompletos.length > 5 && (
-                <Link
-                  href="/clientes"
-                  className="text-xs text-orange-700 hover:underline block text-center pt-2"
-                >
-                  Ver mais {clientesIncompletos.length - 5} cadastro{clientesIncompletos.length - 5 > 1 ? 's' : ''}
-                </Link>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Resumo financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

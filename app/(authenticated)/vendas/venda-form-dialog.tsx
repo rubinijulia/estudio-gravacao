@@ -454,56 +454,25 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
             )}
           </div>
 
-          {/* Nota Fiscal */}
-          <div className="space-y-3 p-4 border-2 border-blue-200 bg-blue-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <Label className="font-semibold">📄 Nota Fiscal</Label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.nf_emitida}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    nf_emitida: e.target.checked,
-                    nf_data_emissao: e.target.checked && !formData.nf_data_emissao ? getTodayLocal() : formData.nf_data_emissao,
-                  })}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm font-medium">
-                  {formData.nf_emitida ? '✅ NF Emitida' : '⏳ NF Pendente'}
-                </span>
-              </label>
-            </div>
-
-            {formData.nf_emitida && (
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Número da NF</Label>
-                  <Input
-                    value={formData.nf_numero}
-                    onChange={(e) => setFormData({ ...formData, nf_numero: e.target.value })}
-                    placeholder="Ex: 000123"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Data de emissão</Label>
-                  <Input
-                    type="date"
-                    value={formData.nf_data_emissao}
-                    onChange={(e) => setFormData({ ...formData, nf_data_emissao: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Link do PDF</Label>
-                  <Input
-                    type="url"
-                    value={formData.nf_link}
-                    onChange={(e) => setFormData({ ...formData, nf_link: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
-            )}
+          {/* Nota Fiscal - apenas check */}
+          <div className="flex items-center gap-3 p-3 border rounded-lg">
+            <input
+              type="checkbox"
+              id="nf_emitida"
+              checked={formData.nf_emitida}
+              onChange={(e) => setFormData({
+                ...formData,
+                nf_emitida: e.target.checked,
+                nf_data_emissao: e.target.checked && !formData.nf_data_emissao ? getTodayLocal() : formData.nf_data_emissao,
+              })}
+              className="h-5 w-5"
+            />
+            <Label htmlFor="nf_emitida" className="cursor-pointer flex items-center gap-2 flex-1">
+              <span className="font-semibold">Nota Fiscal Emitida</span>
+              <span className="text-xs text-muted-foreground">
+                ({formData.nf_emitida ? '✅ marcada' : '⏳ pendente'})
+              </span>
+            </Label>
           </div>
 
           {/* Pagamento */}

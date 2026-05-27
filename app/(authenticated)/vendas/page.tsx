@@ -102,6 +102,27 @@ export default function VendasPage() {
   // 🔴 Realtime: lista atualiza quando alguém cria/edita venda
   useRealtime('vendas', loadVendas)
 
+  async function handleCheckNf(venda: any) {
+    if (venda.nf_emitida) {
+      if (!confirm('Desmarcar NF como emitida?')) return
+    }
+
+    const { error } = await supabase
+      .from('vendas')
+      .update({
+        nf_emitida: !venda.nf_emitida,
+        nf_data_emissao: !venda.nf_emitida ? new Date().toISOString().split('T')[0] : null,
+      })
+      .eq('id', venda.id)
+
+    if (error) {
+      toast.error('Erro ao atualizar')
+    } else {
+      toast.success(venda.nf_emitida ? 'NF desmarcada' : 'NF marcada como emitida!')
+      loadVendas()
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('Deseja realmente excluir esta venda?')) return
     const { error } = await supabase.from('vendas').delete().eq('id', id)
@@ -191,15 +212,26 @@ export default function VendasPage() {
                     </TableCell>
                     <TableCell>
                       {venda.nf_emitida ? (
-                        <Badge className="bg-green-600">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                          onClick={() => handleCheckNf(venda)}
+                          title="Clique pra desmarcar"
+                        >
                           <FileCheck className="h-3 w-3 mr-1" />
                           Emitida
-                        </Badge>
+                        </Button>
                       ) : (
-                        <Badge variant="secondary">
-                          <FileText className="h-3 w-3 mr-1" />
-                          Pendente
-                        </Badge>
+                        <Button
+                          size="sm"
+                          className="h-7 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleCheckNf(venda)}
+                          title="Marcar NF como emitida"
+                        >
+                          <FileCheck className="h-3 w-3 mr-1" />
+                          Emitir
+                        </Button>
                       )}
                     </TableCell>
                     <TableCell>

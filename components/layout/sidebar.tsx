@@ -13,6 +13,7 @@ import {
   FileText,
   Wrench,
   Receipt,
+  MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/use-user'
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { icon: Users, label: 'Clientes', href: '/clientes', roles: ['admin', 'editor'] },
   { icon: Wrench, label: 'Serviços', href: '/servicos', roles: ['admin', 'editor'] },
   { icon: Kanban, label: 'Projetos', href: '/projetos', roles: ['admin', 'editor'] },
+  { icon: MessageCircle, label: 'Mensagem do Dia', href: '/mensagem-do-dia', roles: ['admin'] },
   { icon: DollarSign, label: 'Financeiro', href: '/financeiro', roles: ['admin'] },
   { icon: FileText, label: 'Relatórios', href: '/relatorios', roles: ['admin'] },
   { icon: Settings, label: 'Configurações', href: '/configuracoes', roles: ['admin'] },

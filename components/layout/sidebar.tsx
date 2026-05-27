@@ -12,6 +12,7 @@ import {
   Settings,
   FileText,
   Wrench,
+  Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/use-user'
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { icon: Wrench, label: 'Serviços', href: '/servicos', roles: ['admin', 'editor'] },
   { icon: Kanban, label: 'Projetos', href: '/projetos', roles: ['admin', 'editor'] },
   { icon: DollarSign, label: 'Financeiro', href: '/financeiro', roles: ['admin'] },
+  { icon: Receipt, label: 'Notas Fiscais', href: '/notas-fiscais', roles: ['admin'] },
   { icon: FileText, label: 'Relatórios', href: '/relatorios', roles: ['admin'] },
   { icon: Settings, label: 'Configurações', href: '/configuracoes', roles: ['admin'] },
 ]

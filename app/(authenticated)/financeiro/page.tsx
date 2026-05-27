@@ -48,8 +48,10 @@ export default function FinanceiroPage() {
     receitas: 0,
     despesasFixas: 0,
     despesasVariaveis: 0,
+    imposto: 0,
     lucro: 0,
   })
+  const [configImposto, setConfigImposto] = useState<any>({ modo: 'nenhum', percentual: 0, fixo: 0 })
 
   const [openCustoFixo, setOpenCustoFixo] = useState(false)
   const [openCustoVariavel, setOpenCustoVariavel] = useState(false)
@@ -67,6 +69,22 @@ export default function FinanceiroPage() {
     const fim = dateToLocalString(dataFim)
 
     const ultimoDiaMes = dateToLocalString(new Date(dataFim.getTime() - 1))
+
+    // Buscar config de imposto
+    const { data: configData } = await supabase
+      .from('configuracoes')
+      .select('chave, valor')
+      .in('chave', ['imposto_modo', 'imposto_percentual', 'imposto_fixo_mensal'])
+
+    const cfgMap: any = {}
+    ;(configData || []).forEach(c => { cfgMap[c.chave] = c.valor })
+
+    const impostoConfig = {
+      modo: cfgMap.imposto_modo || 'nenhum',
+      percentual: parseFloat(cfgMap.imposto_percentual || '0'),
+      fixo: parseFloat(cfgMap.imposto_fixo_mensal || '0'),
+    }
+    setConfigImposto(impostoConfig)
 
     const [rec, cf, cv, vds] = await Promise.all([
       supabase
@@ -108,12 +126,22 @@ export default function FinanceiroPage() {
     const despesasFixas = (cf.data || []).filter(c => c.ativo).reduce((sum, c) => sum + Number(c.valor), 0)
     const despesasVariaveis = (cv.data || []).reduce((sum, c) => sum + Number(c.valor_total), 0)
 
+    // Cálculo automático de imposto
+    let imposto = 0
+    if (impostoConfig.modo === 'percentual' || impostoConfig.modo === 'ambos') {
+      imposto += receitas * (impostoConfig.percentual / 100)
+    }
+    if (impostoConfig.modo === 'fixo' || impostoConfig.modo === 'ambos') {
+      imposto += impostoConfig.fixo
+    }
+
     setResumo({
       vendido,
       receitas,
       despesasFixas,
       despesasVariaveis,
-      lucro: receitas - despesasFixas - despesasVariaveis,
+      imposto,
+      lucro: receitas - despesasFixas - despesasVariaveis - imposto,
     })
     setLoading(false)
   }
@@ -162,7 +190,7 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Cards Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Vendido</CardDescription>
@@ -194,6 +222,23 @@ export default function FinanceiroPage() {
               <TrendingDown className="h-4 w-4 text-orange-600" />
             </div>
             <CardTitle className="text-xl text-orange-600">{formatCurrency(resumo.despesasVariaveis)}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-purple-200">
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <CardDescription>Imposto</CardDescription>
+              <TrendingDown className="h-4 w-4 text-purple-600" />
+            </div>
+            <CardTitle className="text-xl text-purple-600">{formatCurrency(resumo.imposto)}</CardTitle>
+            {configImposto.modo === 'percentual' && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {configImposto.percentual}% s/ recebido
+              </p>
+            )}
+            {configImposto.modo === 'fixo' && (
+              <p className="text-[10px] text-muted-foreground mt-1">Valor fixo</p>
+            )}
           </CardHeader>
         </Card>
         <Card className={resumo.lucro >= 0 ? 'border-blue-200 bg-blue-50' : 'border-red-300 bg-red-50'}>

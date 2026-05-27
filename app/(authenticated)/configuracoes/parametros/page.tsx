@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Settings, Save } from 'lucide-react'
+import { ArrowLeft, Settings, Save, Receipt } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -19,6 +20,9 @@ export default function ParametrosPage() {
     taxa_cartao_credito_percentual: 4.5,
     acrescimo_noturno_fds_percentual: 20,
     horario_inicio_noturno: '20:00',
+    imposto_modo: 'percentual',
+    imposto_percentual: 6,
+    imposto_fixo_mensal: 0,
   })
 
   const supabase = createClient()
@@ -34,6 +38,9 @@ export default function ParametrosPage() {
         'taxa_cartao_credito_percentual',
         'acrescimo_noturno_fds_percentual',
         'horario_inicio_noturno',
+        'imposto_modo',
+        'imposto_percentual',
+        'imposto_fixo_mensal',
       ])
 
     if (data) {
@@ -151,6 +158,63 @@ export default function ParametrosPage() {
               />
               <p className="text-xs text-muted-foreground">A partir desse horário, acréscimo noturno se aplica</p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              🏛️ Imposto sobre Receita
+            </h3>
+
+            <div className="space-y-2">
+              <Label>Modo de Cálculo</Label>
+              <Select
+                value={config.imposto_modo}
+                onValueChange={(v) => setConfig({ ...config, imposto_modo: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentual">Percentual sobre receita (Simples/Lucro Presumido)</SelectItem>
+                  <SelectItem value="fixo">Valor fixo mensal (MEI)</SelectItem>
+                  <SelectItem value="ambos">Ambos (% + valor fixo)</SelectItem>
+                  <SelectItem value="nenhum">Sem cálculo automático</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(config.imposto_modo === 'percentual' || config.imposto_modo === 'ambos') && (
+              <div className="space-y-2">
+                <Label>Alíquota (%)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={config.imposto_percentual}
+                  onChange={(e) => setConfig({ ...config, imposto_percentual: parseFloat(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Será calculado sobre o total recebido no mês
+                </p>
+              </div>
+            )}
+
+            {(config.imposto_modo === 'fixo' || config.imposto_modo === 'ambos') && (
+              <div className="space-y-2">
+                <Label>Valor fixo mensal (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={config.imposto_fixo_mensal}
+                  onChange={(e) => setConfig({ ...config, imposto_fixo_mensal: parseFloat(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ex: MEI = ~R$ 75,90/mês (varia por categoria)
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

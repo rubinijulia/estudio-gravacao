@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, FileText, FileCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { VendaFormDialog } from './venda-form-dialog'
 import { formatCurrency, formatDate } from '@/lib/formatters'
@@ -169,6 +169,8 @@ export default function VendasPage() {
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Valor</TableHead>
+                  <TableHead>Imposto</TableHead>
+                  <TableHead>NF</TableHead>
                   <TableHead>Pagamento</TableHead>
                   <TableHead>Serviço</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -181,6 +183,24 @@ export default function VendasPage() {
                     <TableCell className="font-medium">{venda.clientes?.nome || 'Cliente removido'}</TableCell>
                     <TableCell className="font-mono">
                       {formatCurrency(Number(venda.valor_total) - Number(venda.desconto || 0))}
+                    </TableCell>
+                    <TableCell className="font-mono text-purple-600 text-sm">
+                      {Number(venda.valor_imposto || 0) > 0
+                        ? formatCurrency(venda.valor_imposto)
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {venda.nf_emitida ? (
+                        <Badge className="bg-green-600">
+                          <FileCheck className="h-3 w-3 mr-1" />
+                          Emitida
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <FileText className="h-3 w-3 mr-1" />
+                          Pendente
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_PAGAMENTO_LABEL[venda.status_pagamento]?.variant}>

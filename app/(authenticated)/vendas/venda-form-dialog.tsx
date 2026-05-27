@@ -58,19 +58,28 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
     data_sinal: '',
     data_quitacao: '',
     observacoes: '',
+    nf_emitida: false,
+    nf_numero: '',
+    nf_data_emissao: '',
+    nf_link: '',
   })
 
   const [itens, setItens] = useState<Item[]>([])
+  const [aliquotaImposto, setAliquotaImposto] = useState(0)
 
   const supabase = createClient()
 
   async function loadData() {
-    const [{ data: cli }, { data: srv }] = await Promise.all([
+    const [{ data: cli }, { data: srv }, { data: cfgImp }] = await Promise.all([
       supabase.from('clientes').select('id, nome').order('nome'),
       supabase.from('servicos').select('*').eq('ativo', true).order('nome'),
+      supabase.from('configuracoes').select('valor').eq('chave', 'imposto_percentual').single(),
     ])
     setClientes(cli || [])
     setServicos(srv || [])
+    if (cfgImp?.valor) {
+      setAliquotaImposto(parseFloat(cfgImp.valor as any) || 0)
+    }
   }
 
   useEffect(() => {
@@ -90,6 +99,10 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
         data_sinal: venda.data_sinal || '',
         data_quitacao: venda.data_quitacao || '',
         observacoes: venda.observacoes || '',
+        nf_emitida: venda.nf_emitida ?? false,
+        nf_numero: venda.nf_numero || '',
+        nf_data_emissao: venda.nf_data_emissao || '',
+        nf_link: venda.nf_link || '',
       })
       loadItens(venda.id)
     } else {
@@ -104,6 +117,10 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
         data_sinal: '',
         data_quitacao: '',
         observacoes: '',
+        nf_emitida: false,
+        nf_numero: '',
+        nf_data_emissao: '',
+        nf_link: '',
       })
       setItens([])
     }
@@ -173,6 +190,8 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
 
   const valorTotal = itens.reduce((sum, i) => sum + (i.quantidade * i.valor_unitario), 0)
   const valorFinal = valorTotal - parseFloat(formData.desconto || '0')
+  const valorImposto = aliquotaImposto > 0 ? (valorFinal * aliquotaImposto) / 100 : 0
+  const lucroLiquido = valorFinal - valorImposto
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -204,6 +223,11 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
         data_sinal: formData.data_sinal || null,
         data_quitacao: formData.data_quitacao || null,
         observacoes: formData.observacoes || null,
+        valor_imposto: valorImposto,
+        nf_emitida: formData.nf_emitida,
+        nf_numero: formData.nf_numero || null,
+        nf_data_emissao: formData.nf_data_emissao || null,
+        nf_link: formData.nf_link || null,
       }
 
       if (!venda) {
@@ -388,25 +412,98 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
           </div>
 
           {/* Resumo de valores */}
-          <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-            <div>
-              <div className="text-xs text-muted-foreground">Subtotal</div>
-              <div className="text-lg font-semibold">{formatCurrency(valorTotal)}</div>
+          <div className="space-y-3 p-4 bg-muted rounded-lg">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground">Subtotal</div>
+                <div className="text-lg font-semibold">{formatCurrency(valorTotal)}</div>
+              </div>
+              <div>
+                <Label className="text-xs">Desconto (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.desconto}
+                  onChange={(e) => setFormData({ ...formData, desconto: e.target.value })}
+                />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Total</div>
+                <div className="text-lg font-bold text-primary">{formatCurrency(valorFinal)}</div>
+              </div>
             </div>
-            <div>
-              <Label className="text-xs">Desconto (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.desconto}
-                onChange={(e) => setFormData({ ...formData, desconto: e.target.value })}
-              />
+
+            {aliquotaImposto > 0 && (
+              <div className="grid grid-cols-2 gap-4 pt-3 border-t">
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    Imposto ({aliquotaImposto}%)
+                  </div>
+                  <div className="text-base font-semibold text-purple-600">
+                    {formatCurrency(valorImposto)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Líquido (após imposto)</div>
+                  <div className="text-base font-bold text-green-700">
+                    {formatCurrency(lucroLiquido)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Nota Fiscal */}
+          <div className="space-y-3 p-4 border-2 border-blue-200 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <Label className="font-semibold">📄 Nota Fiscal</Label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.nf_emitida}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    nf_emitida: e.target.checked,
+                    nf_data_emissao: e.target.checked && !formData.nf_data_emissao ? getTodayLocal() : formData.nf_data_emissao,
+                  })}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm font-medium">
+                  {formData.nf_emitida ? '✅ NF Emitida' : '⏳ NF Pendente'}
+                </span>
+              </label>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Total</div>
-              <div className="text-lg font-bold text-primary">{formatCurrency(valorFinal)}</div>
-            </div>
+
+            {formData.nf_emitida && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Número da NF</Label>
+                  <Input
+                    value={formData.nf_numero}
+                    onChange={(e) => setFormData({ ...formData, nf_numero: e.target.value })}
+                    placeholder="Ex: 000123"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Data de emissão</Label>
+                  <Input
+                    type="date"
+                    value={formData.nf_data_emissao}
+                    onChange={(e) => setFormData({ ...formData, nf_data_emissao: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Link do PDF</Label>
+                  <Input
+                    type="url"
+                    value={formData.nf_link}
+                    onChange={(e) => setFormData({ ...formData, nf_link: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pagamento */}

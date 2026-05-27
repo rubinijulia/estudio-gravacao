@@ -154,20 +154,20 @@ export async function GET(request: NextRequest) {
       mensagem += '\n'
     }
 
-    // 🔥 PAGAMENTOS PARA COBRAR URGENTE (gravação > 5 dias)
+    // 🔍 CONFIRMAR PAGAMENTO (gravação > 5 dias sem baixa total)
     if (pagamentosCobrar && pagamentosCobrar.length > 0) {
-      let totalCobrar = 0
-      mensagem += `🔥 *COBRAR HOJE* (${pagamentosCobrar.length})\n`
-      mensagem += `_Gravação há mais de 5 dias sem pagamento total_\n`
+      let totalConfirmar = 0
+      mensagem += `🔍 *CONFIRMAR PAGAMENTO* (${pagamentosCobrar.length})\n`
+      mensagem += `_Gravação há +5 dias sem baixa total no sistema - verificar se já recebemos_\n`
       pagamentosCobrar.forEach((v: any) => {
         const total = Number(v.valor_total) - Number(v.desconto || 0)
         const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
         const pendente = total - pago
-        totalCobrar += pendente
+        totalConfirmar += pendente
         const dias = Math.floor((new Date().getTime() - new Date(v.data_venda + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24))
         mensagem += `• ${v.clientes?.nome} - R$ ${pendente.toFixed(2).replace('.', ',')} (${dias} dias)\n`
       })
-      mensagem += `_Total a cobrar: R$ ${totalCobrar.toFixed(2).replace('.', ',')}_\n\n`
+      mensagem += `_Total a confirmar: R$ ${totalConfirmar.toFixed(2).replace('.', ',')}_\n\n`
     }
 
     // Pagamentos para revisar (geral, todos)

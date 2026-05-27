@@ -267,15 +267,15 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* 🔥 ALERTA DE COBRANÇA */}
+      {/* 🔍 CONFIRMAR PAGAMENTO */}
       {pagamentosCobrar.length > 0 && (
-        <Card className="border-red-300 bg-red-50">
+        <Card className="border-yellow-400 bg-yellow-50">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-red-700">
-              🔥 {pagamentosCobrar.length} cliente{pagamentosCobrar.length > 1 ? 's' : ''} para cobrar
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              🔍 {pagamentosCobrar.length} pagamento{pagamentosCobrar.length > 1 ? 's' : ''} para confirmar
             </CardTitle>
-            <CardDescription className="text-red-700/80">
-              Gravação realizada há mais de 5 dias sem pagamento total
+            <CardDescription className="text-yellow-700/80">
+              Gravação há +5 dias sem baixa total - verificar se já recebemos (pode ser só falta de atualizar no sistema)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                   <Link
                     key={v.id}
                     href="/vendas"
-                    className="flex items-center justify-between p-3 bg-white border border-red-200 rounded-lg hover:bg-red-100"
+                    className="flex items-center justify-between p-3 bg-white border border-yellow-300 rounded-lg hover:bg-yellow-100"
                   >
                     <div>
                       <div className="font-medium text-sm">{v.clientes?.nome}</div>
@@ -297,15 +297,15 @@ export default function DashboardPage() {
                         {dias} dias da venda · {v.status_pagamento === 'sinal_pago' ? 'Sinal pago' : 'A receber'}
                       </div>
                     </div>
-                    <div className="font-mono font-bold text-red-700">
+                    <div className="font-mono font-bold text-yellow-800">
                       {formatCurrency(pendente)}
                     </div>
                   </Link>
                 )
               })}
               {pagamentosCobrar.length > 5 && (
-                <Link href="/vendas" className="text-xs text-red-700 hover:underline block text-center">
-                  Ver mais {pagamentosCobrar.length - 5} cobranças
+                <Link href="/vendas" className="text-xs text-yellow-800 hover:underline block text-center">
+                  Ver mais {pagamentosCobrar.length - 5} para confirmar
                 </Link>
               )}
             </div>

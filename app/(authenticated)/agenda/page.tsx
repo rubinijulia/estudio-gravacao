@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { AgendamentoFormDialog } from './agendamento-form-dialog'
 import { ProjetoFormDialog } from './projeto-form-dialog'
 import { formatDate, getTodayLocal, dateToLocalString } from '@/lib/formatters'
+import { useRealtime } from '@/lib/use-realtime'
 
 export default function AgendaPage() {
   const [agendamentos, setAgendamentos] = useState<any[]>([])
@@ -61,6 +62,9 @@ export default function AgendaPage() {
   useEffect(() => {
     loadAgendamentos()
   }, [filtroPeriodo])
+
+  // 🔴 Realtime: recarrega quando alguém da equipe adiciona/edita/exclui agendamento
+  useRealtime('agendamentos', loadAgendamentos)
 
   async function handleCheck(agendamento: any) {
     if (agendamento.gravacao_realizada) {

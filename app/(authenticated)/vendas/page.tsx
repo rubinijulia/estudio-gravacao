@@ -17,6 +17,7 @@ import { Plus, Edit, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { VendaFormDialog } from './venda-form-dialog'
 import { formatCurrency, formatDate } from '@/lib/formatters'
+import { useRealtime } from '@/lib/use-realtime'
 
 const STATUS_PAGAMENTO_LABEL: Record<string, { label: string; variant: any }> = {
   a_receber: { label: 'A Receber', variant: 'destructive' },
@@ -97,6 +98,9 @@ export default function VendasPage() {
   useEffect(() => {
     loadVendas()
   }, [])
+
+  // 🔴 Realtime: lista atualiza quando alguém cria/edita venda
+  useRealtime('vendas', loadVendas)
 
   async function handleDelete(id: string) {
     if (!confirm('Deseja realmente excluir esta venda?')) return

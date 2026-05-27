@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate, getDaysUntilDate, getTodayLocal } from '@/lib/formatters'
+import { useRealtime } from '@/lib/use-realtime'
 import { ProjetoFormDialog } from './projeto-form-dialog'
 import {
   DndContext,
@@ -209,6 +210,9 @@ export default function ProjetosPage() {
   useEffect(() => {
     loadProjetos()
   }, [])
+
+  // 🔴 Realtime: kanban atualiza quando alguém move card ou cria projeto
+  useRealtime('projetos', loadProjetos)
 
   function handleDragStart(event: DragStartEvent) {
     const projeto = event.active.data.current?.projeto

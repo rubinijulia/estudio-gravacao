@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Check, AlertCircle, Calendar, TrendingUp, DollarSign, UserX, FileDown } from 'lucide-react'
 import { formatCurrency, formatDate, getDaysUntilDate, getTodayLocal, dateToLocalString } from '@/lib/formatters'
+import { useRealtime } from '@/lib/use-realtime'
 import { isCadastroCompleto, camposFaltando } from '@/lib/cliente'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -137,6 +138,11 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboard()
   }, [])
+
+  // 🔴 Realtime: dashboard atualiza quando muda agendamento, venda ou projeto
+  useRealtime('agendamentos', loadDashboard)
+  useRealtime('vendas', loadDashboard)
+  useRealtime('projetos', loadDashboard)
 
   async function handleCheck(ag: any) {
     if (!confirm('Confirmar gravação?')) return

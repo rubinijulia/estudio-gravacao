@@ -66,6 +66,23 @@ export async function GET(request: NextRequest) {
       .gte('data_entrega_prevista', hojeStr)
       .order('data_entrega_prevista')
 
+    // Pagamentos para revisar (gravação realizada mas ainda não pago)
+    const { data: pagamentosRevisar } = await admin
+      .from('vendas')
+      .select('*, clientes(nome)')
+      .eq('status_servico', 'realizada')
+      .in('status_pagamento', ['a_receber', 'sinal_pago'])
+      .order('data_venda')
+
+    // NFs para emitir (gravação realizada mas NF não emitida)
+    const { data: nfsParaEmitir } = await admin
+      .from('vendas')
+      .select('*, clientes(nome)')
+      .eq('status_servico', 'realizada')
+      .eq('nf_emitida', false)
+      .neq('status_pagamento', 'cancelado')
+      .order('data_venda')
+
     // Formatar mensagem
     const dataObj = new Date(dataParam + 'T12:00:00')
     const diaSemana = dataObj.toLocaleDateString('pt-BR', { weekday: 'long' })
@@ -124,6 +141,34 @@ export async function GET(request: NextRequest) {
       mensagem += '\n'
     }
 
+    // Pagamentos para revisar
+    if (pagamentosRevisar && pagamentosRevisar.length > 0) {
+      let totalPendente = 0
+      mensagem += `💰 *PAGAMENTOS PARA REVISAR* (${pagamentosRevisar.length})\n`
+      mensagem += `_Gravações já realizadas e ainda não recebidas_\n`
+      pagamentosRevisar.forEach((v: any) => {
+        const total = Number(v.valor_total) - Number(v.desconto || 0)
+        const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
+        const pendente = total - pago
+        totalPendente += pendente
+        const statusLabel = v.status_pagamento === 'sinal_pago' ? '(sinal pago)' : '(a receber)'
+        mensagem += `• ${v.clientes?.nome} - R$ ${pendente.toFixed(2).replace('.', ',')} ${statusLabel}\n`
+      })
+      mensagem += `_Total: R$ ${totalPendente.toFixed(2).replace('.', ',')}_\n\n`
+    }
+
+    // NFs para emitir
+    if (nfsParaEmitir && nfsParaEmitir.length > 0) {
+      let totalNf = 0
+      mensagem += `📄 *NFs PARA EMITIR* (${nfsParaEmitir.length})\n`
+      nfsParaEmitir.forEach((v: any) => {
+        const valor = Number(v.valor_total) - Number(v.desconto || 0)
+        totalNf += valor
+        mensagem += `• ${v.clientes?.nome} - R$ ${valor.toFixed(2).replace('.', ',')}\n`
+      })
+      mensagem += `_Total: R$ ${totalNf.toFixed(2).replace('.', ',')}_\n\n`
+    }
+
     // Projetos em andamento (agrupados por status)
     if (emAndamento && emAndamento.length > 0) {
       mensagem += `🎞️ *PROJETOS EM ANDAMENTO* (${emAndamento.length})\n`
@@ -162,6 +207,8 @@ export async function GET(request: NextRequest) {
       total_entregas: entregas?.length || 0,
       total_atrasos: atrasados?.length || 0,
       total_em_andamento: emAndamento?.length || 0,
+      total_pagamentos_revisar: pagamentosRevisar?.length || 0,
+      total_nfs_emitir: nfsParaEmitir?.length || 0,
     })
   } catch (err: any) {
     console.error('Erro ao gerar mensagem:', err)

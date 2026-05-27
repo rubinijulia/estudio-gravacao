@@ -12,7 +12,14 @@ import { dateToLocalString } from '@/lib/formatters'
 export default function MensagemDoDiaPage() {
   const [loading, setLoading] = useState(false)
   const [mensagem, setMensagem] = useState('')
-  const [contadores, setContadores] = useState({ gravacoes: 0, entregas: 0, atrasos: 0, em_andamento: 0 })
+  const [contadores, setContadores] = useState({
+    gravacoes: 0,
+    entregas: 0,
+    atrasos: 0,
+    em_andamento: 0,
+    pagamentos_revisar: 0,
+    nfs_emitir: 0,
+  })
   const [copiado, setCopiado] = useState(false)
   const [data, setData] = useState(() => {
     // Default: AMANHÃ
@@ -40,6 +47,8 @@ export default function MensagemDoDiaPage() {
         entregas: json.total_entregas,
         atrasos: json.total_atrasos,
         em_andamento: json.total_em_andamento || 0,
+        pagamentos_revisar: json.total_pagamentos_revisar || 0,
+        nfs_emitir: json.total_nfs_emitir || 0,
       })
     } catch (err: any) {
       toast.error(err.message)
@@ -136,7 +145,7 @@ export default function MensagemDoDiaPage() {
       </Card>
 
       {/* Contadores rápidos */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>🎬 Gravações</CardDescription>
@@ -160,6 +169,22 @@ export default function MensagemDoDiaPage() {
             <CardDescription>🚨 Atrasos</CardDescription>
             <CardTitle className={`text-3xl ${contadores.atrasos > 0 ? 'text-red-600' : ''}`}>
               {contadores.atrasos}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className={contadores.pagamentos_revisar > 0 ? 'border-orange-300 bg-orange-50' : ''}>
+          <CardHeader className="pb-2">
+            <CardDescription>💰 Pagamentos</CardDescription>
+            <CardTitle className={`text-3xl ${contadores.pagamentos_revisar > 0 ? 'text-orange-600' : ''}`}>
+              {contadores.pagamentos_revisar}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className={contadores.nfs_emitir > 0 ? 'border-purple-300 bg-purple-50' : ''}>
+          <CardHeader className="pb-2">
+            <CardDescription>📄 NFs Pendentes</CardDescription>
+            <CardTitle className={`text-3xl ${contadores.nfs_emitir > 0 ? 'text-purple-600' : ''}`}>
+              {contadores.nfs_emitir}
             </CardTitle>
           </CardHeader>
         </Card>

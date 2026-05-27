@@ -52,13 +52,14 @@ export function Autocomplete({
     : options
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div ref={containerRef} className={cn('relative min-w-0', className)}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm h-9 hover:bg-muted/50"
+        className="w-full flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm h-9 hover:bg-muted/50 min-w-0"
+        title={selectedOption?.label}
       >
-        <span className={cn('truncate', !selectedOption && 'text-muted-foreground')}>
+        <span className={cn('truncate min-w-0 text-left', !selectedOption && 'text-muted-foreground')}>
           {selectedOption?.label || placeholder}
         </span>
         <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />

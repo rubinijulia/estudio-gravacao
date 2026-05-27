@@ -62,7 +62,9 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
     nf_numero: '',
     nf_data_emissao: '',
     nf_link: '',
+    tipo_venda: 'nova',
   })
+  const [tipoSugerido, setTipoSugerido] = useState<string | null>(null)
 
   const [itens, setItens] = useState<Item[]>([])
   const [aliquotaImposto, setAliquotaImposto] = useState(0)
@@ -103,6 +105,7 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
         nf_numero: venda.nf_numero || '',
         nf_data_emissao: venda.nf_data_emissao || '',
         nf_link: venda.nf_link || '',
+        tipo_venda: venda.tipo_venda || 'nova',
       })
       loadItens(venda.id)
     } else {
@@ -121,10 +124,48 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
         nf_numero: '',
         nf_data_emissao: '',
         nf_link: '',
+        tipo_venda: 'nova',
       })
       setItens([])
     }
   }, [venda, open])
+
+  // Auto-sugerir tipo de venda baseado no histórico do cliente
+  useEffect(() => {
+    if (!formData.cliente_id || venda) return // só sugere em vendas novas
+
+    async function sugerirTipo() {
+      // Verifica se item selecionado é plano mensal
+      const temPlanoMensal = itens.some(i => {
+        const servico = servicos.find(s => s.id === i.servico_id)
+        return servico?.categoria === 'plano_mensal'
+      })
+
+      if (temPlanoMensal) {
+        setTipoSugerido('recorrente')
+        setFormData(prev => ({ ...prev, tipo_venda: 'recorrente' }))
+        return
+      }
+
+      // Verifica se cliente já tem venda anterior
+      const { data: vendasAnteriores } = await supabase
+        .from('vendas')
+        .select('id')
+        .eq('cliente_id', formData.cliente_id)
+        .neq('status_pagamento', 'cancelado')
+        .limit(1)
+
+      if (vendasAnteriores && vendasAnteriores.length > 0) {
+        setTipoSugerido('revenda')
+        setFormData(prev => ({ ...prev, tipo_venda: 'revenda' }))
+      } else {
+        setTipoSugerido('nova')
+        setFormData(prev => ({ ...prev, tipo_venda: 'nova' }))
+      }
+    }
+
+    sugerirTipo()
+  }, [formData.cliente_id, itens, venda])
 
   async function loadItens(vendaId: string) {
     const { data } = await supabase
@@ -228,6 +269,7 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
         nf_numero: formData.nf_numero || null,
         nf_data_emissao: formData.nf_data_emissao || null,
         nf_link: formData.nf_link || null,
+        tipo_venda: formData.tipo_venda,
       }
 
       if (!venda) {
@@ -323,6 +365,60 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
                   Cancelar
                 </Button>
               </div>
+            )}
+          </div>
+
+          {/* Tipo de Venda */}
+          <div className="space-y-2">
+            <Label>Classificação da Venda *</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, tipo_venda: 'nova' })}
+                className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                  formData.tipo_venda === 'nova'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                🆕 Nova
+                <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                  Primeira venda
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, tipo_venda: 'revenda' })}
+                className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                  formData.tipo_venda === 'revenda'
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                🔄 Revenda
+                <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                  Cliente voltou
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, tipo_venda: 'recorrente' })}
+                className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                  formData.tipo_venda === 'recorrente'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                ♾️ Recorrente
+                <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                  Plano mensal
+                </div>
+              </button>
+            </div>
+            {tipoSugerido && tipoSugerido === formData.tipo_venda && (
+              <p className="text-xs text-blue-600 flex items-center gap-1">
+                ✨ Sugerido automaticamente baseado no histórico
+              </p>
             )}
           </div>
 

@@ -32,6 +32,12 @@ const STATUS_SERVICO_LABEL: Record<string, { label: string; variant: any }> = {
   cancelada: { label: 'Cancelada', variant: 'destructive' },
 }
 
+const TIPO_VENDA_LABEL: Record<string, { label: string; emoji: string; color: string }> = {
+  nova: { label: 'Nova', emoji: '🆕', color: 'bg-blue-500' },
+  revenda: { label: 'Revenda', emoji: '🔄', color: 'bg-purple-500' },
+  recorrente: { label: 'Recorrente', emoji: '♾️', color: 'bg-green-600' },
+}
+
 export default function VendasPage() {
   const [vendas, setVendas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,6 +48,9 @@ export default function VendasPage() {
     recebido: 0,
     aReceber: 0,
     cancelado: 0,
+    novas: 0,
+    revendas: 0,
+    recorrentes: 0,
   })
 
   const supabase = createClient()
@@ -92,7 +101,11 @@ export default function VendasPage() {
       .filter(v => v.status_pagamento === 'cancelado')
       .reduce((sum, v) => sum + Number(v.valor_total), 0)
 
-    setResumo({ vendido, recebido, aReceber, cancelado })
+    const novas = vendasMes.filter(v => v.tipo_venda === 'nova' && v.status_pagamento !== 'cancelado').length
+    const revendas = vendasMes.filter(v => v.tipo_venda === 'revenda' && v.status_pagamento !== 'cancelado').length
+    const recorrentes = vendasMes.filter(v => v.tipo_venda === 'recorrente' && v.status_pagamento !== 'cancelado').length
+
+    setResumo({ vendido, recebido, aReceber, cancelado, novas, revendas, recorrentes })
   }
 
   useEffect(() => {
@@ -175,6 +188,28 @@ export default function VendasPage() {
         </Card>
       </div>
 
+      {/* Cards por tipo de venda */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Card className="border-blue-200">
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">🆕 Vendas Novas (mês)</CardDescription>
+            <CardTitle className="text-2xl text-blue-600">{resumo.novas}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-purple-200">
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">🔄 Revendas (mês)</CardDescription>
+            <CardTitle className="text-2xl text-purple-600">{resumo.revendas}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-green-200">
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">♾️ Recorrentes (mês)</CardDescription>
+            <CardTitle className="text-2xl text-green-600">{resumo.recorrentes}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -189,6 +224,7 @@ export default function VendasPage() {
                 <TableRow>
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Imposto</TableHead>
                   <TableHead>NF</TableHead>
@@ -202,6 +238,11 @@ export default function VendasPage() {
                   <TableRow key={venda.id}>
                     <TableCell>{formatDate(venda.data_venda)}</TableCell>
                     <TableCell className="font-medium">{venda.clientes?.nome || 'Cliente removido'}</TableCell>
+                    <TableCell>
+                      <Badge className={`${TIPO_VENDA_LABEL[venda.tipo_venda || 'nova']?.color} text-white`}>
+                        {TIPO_VENDA_LABEL[venda.tipo_venda || 'nova']?.emoji} {TIPO_VENDA_LABEL[venda.tipo_venda || 'nova']?.label}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-mono">
                       {formatCurrency(Number(venda.valor_total) - Number(venda.desconto || 0))}
                     </TableCell>

@@ -58,6 +58,14 @@ export async function GET(request: NextRequest) {
       .neq('status', 'finalizado')
       .order('data_entrega_prevista')
 
+    // Projetos em andamento (não finalizados e não atrasados)
+    const { data: emAndamento } = await admin
+      .from('projetos')
+      .select('*, clientes(nome), users_profile!projetos_responsavel_id_fkey(nome)')
+      .neq('status', 'finalizado')
+      .gte('data_entrega_prevista', hojeStr)
+      .order('data_entrega_prevista')
+
     // Formatar mensagem
     const dataObj = new Date(dataParam + 'T12:00:00')
     const diaSemana = dataObj.toLocaleDateString('pt-BR', { weekday: 'long' })
@@ -116,6 +124,36 @@ export async function GET(request: NextRequest) {
       mensagem += '\n'
     }
 
+    // Projetos em andamento (agrupados por status)
+    if (emAndamento && emAndamento.length > 0) {
+      mensagem += `🎞️ *PROJETOS EM ANDAMENTO* (${emAndamento.length})\n`
+
+      const statusLabels: Record<string, string> = {
+        gravado: '📼 Gravado',
+        editando: '✂️ Editando',
+        cortes: '🎬 Cortes',
+        enviado: '📤 Enviado',
+        em_ajuste: '🔧 Em Ajuste',
+      }
+
+      const ordem = ['gravado', 'editando', 'cortes', 'enviado', 'em_ajuste']
+
+      ordem.forEach(status => {
+        const projetosStatus = emAndamento.filter((p: any) => p.status === status)
+        if (projetosStatus.length === 0) return
+
+        mensagem += `\n_${statusLabels[status]} (${projetosStatus.length})_\n`
+        projetosStatus.forEach((p: any) => {
+          const dataEntrega = new Date(p.data_entrega_prevista + 'T12:00:00')
+          const dataFmt = dataEntrega.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+          mensagem += `• ${p.clientes?.nome} - entrega ${dataFmt}`
+          if (p.users_profile?.nome) mensagem += ` (${p.users_profile.nome})`
+          mensagem += '\n'
+        })
+      })
+      mensagem += '\n'
+    }
+
     mensagem += `_Bom trabalho! 🚀_`
 
     return NextResponse.json({
@@ -123,6 +161,7 @@ export async function GET(request: NextRequest) {
       total_gravacoes: gravacoes?.length || 0,
       total_entregas: entregas?.length || 0,
       total_atrasos: atrasados?.length || 0,
+      total_em_andamento: emAndamento?.length || 0,
     })
   } catch (err: any) {
     console.error('Erro ao gerar mensagem:', err)

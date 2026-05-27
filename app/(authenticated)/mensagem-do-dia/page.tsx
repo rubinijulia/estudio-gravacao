@@ -12,7 +12,7 @@ import { dateToLocalString } from '@/lib/formatters'
 export default function MensagemDoDiaPage() {
   const [loading, setLoading] = useState(false)
   const [mensagem, setMensagem] = useState('')
-  const [contadores, setContadores] = useState({ gravacoes: 0, entregas: 0, atrasos: 0 })
+  const [contadores, setContadores] = useState({ gravacoes: 0, entregas: 0, atrasos: 0, em_andamento: 0 })
   const [copiado, setCopiado] = useState(false)
   const [data, setData] = useState(() => {
     // Default: AMANHÃ
@@ -39,6 +39,7 @@ export default function MensagemDoDiaPage() {
         gravacoes: json.total_gravacoes,
         entregas: json.total_entregas,
         atrasos: json.total_atrasos,
+        em_andamento: json.total_em_andamento || 0,
       })
     } catch (err: any) {
       toast.error(err.message)
@@ -135,7 +136,7 @@ export default function MensagemDoDiaPage() {
       </Card>
 
       {/* Contadores rápidos */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>🎬 Gravações</CardDescription>
@@ -146,6 +147,12 @@ export default function MensagemDoDiaPage() {
           <CardHeader className="pb-2">
             <CardDescription>📦 Entregas</CardDescription>
             <CardTitle className="text-3xl">{contadores.entregas}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>🎞️ Em Andamento</CardDescription>
+            <CardTitle className="text-3xl text-blue-600">{contadores.em_andamento}</CardTitle>
           </CardHeader>
         </Card>
         <Card className={contadores.atrasos > 0 ? 'border-red-300 bg-red-50' : ''}>

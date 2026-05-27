@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [clientesIncompletos, setClientesIncompletos] = useState<any[]>([])
   const [mostrarFechamentoMes, setMostrarFechamentoMes] = useState(false)
   const [competenciaFechamento, setCompetenciaFechamento] = useState('')
+  const [pagamentosCobrar, setPagamentosCobrar] = useState<any[]>([])
+  const [nfsParaEmitir, setNfsParaEmitir] = useState<any[]>([])
 
   const supabase = createClient()
 
@@ -102,6 +104,29 @@ export default function DashboardPage() {
         .neq('status', 'finalizado')
         .order('data_entrega_prevista')
       setAtrasos(atr || [])
+
+      // Pagamentos para cobrar (gravação há +5 dias sem pagamento total)
+      const cincoDiasAtras = new Date()
+      cincoDiasAtras.setDate(cincoDiasAtras.getDate() - 5)
+      const cincoDiasAtrasStr = dateToLocalString(cincoDiasAtras)
+
+      const { data: cobrar } = await supabase
+        .from('vendas')
+        .select('*, clientes(nome)')
+        .eq('status_servico', 'realizada')
+        .in('status_pagamento', ['a_receber', 'sinal_pago'])
+        .lte('data_venda', cincoDiasAtrasStr)
+        .order('data_venda')
+      setPagamentosCobrar(cobrar || [])
+
+      // NFs para emitir
+      const { data: nfs } = await supabase
+        .from('vendas')
+        .select('*, clientes(nome)')
+        .eq('nf_emitida', false)
+        .neq('status_pagamento', 'cancelado')
+        .order('data_venda')
+      setNfsParaEmitir(nfs || [])
 
       // Cadastros incompletos (detecta automaticamente pelos campos faltando)
       const { data: todosClientes } = await supabase
@@ -238,6 +263,95 @@ export default function DashboardPage() {
             <Button variant="outline" onClick={() => setMostrarFechamentoMes(false)}>
               Dispensar
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🔥 ALERTA DE COBRANÇA */}
+      {pagamentosCobrar.length > 0 && (
+        <Card className="border-red-300 bg-red-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-red-700">
+              🔥 {pagamentosCobrar.length} cliente{pagamentosCobrar.length > 1 ? 's' : ''} para cobrar
+            </CardTitle>
+            <CardDescription className="text-red-700/80">
+              Gravação realizada há mais de 5 dias sem pagamento total
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {pagamentosCobrar.slice(0, 5).map((v: any) => {
+                const total = Number(v.valor_total) - Number(v.desconto || 0)
+                const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
+                const pendente = total - pago
+                const dias = Math.floor((new Date().getTime() - new Date(v.data_venda + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24))
+                return (
+                  <Link
+                    key={v.id}
+                    href="/vendas"
+                    className="flex items-center justify-between p-3 bg-white border border-red-200 rounded-lg hover:bg-red-100"
+                  >
+                    <div>
+                      <div className="font-medium text-sm">{v.clientes?.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {dias} dias da venda · {v.status_pagamento === 'sinal_pago' ? 'Sinal pago' : 'A receber'}
+                      </div>
+                    </div>
+                    <div className="font-mono font-bold text-red-700">
+                      {formatCurrency(pendente)}
+                    </div>
+                  </Link>
+                )
+              })}
+              {pagamentosCobrar.length > 5 && (
+                <Link href="/vendas" className="text-xs text-red-700 hover:underline block text-center">
+                  Ver mais {pagamentosCobrar.length - 5} cobranças
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 📄 NFs PARA EMITIR */}
+      {nfsParaEmitir.length > 0 && (
+        <Card className="border-purple-300 bg-purple-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-purple-700">
+              📄 {nfsParaEmitir.length} NF{nfsParaEmitir.length > 1 ? 's' : ''} para emitir
+            </CardTitle>
+            <CardDescription className="text-purple-700/80">
+              Vendas sem nota fiscal emitida
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {nfsParaEmitir.slice(0, 5).map((v: any) => {
+                const valor = Number(v.valor_total) - Number(v.desconto || 0)
+                return (
+                  <Link
+                    key={v.id}
+                    href="/vendas"
+                    className="flex items-center justify-between p-3 bg-white border border-purple-200 rounded-lg hover:bg-purple-100"
+                  >
+                    <div>
+                      <div className="font-medium text-sm">{v.clientes?.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Venda {new Date(v.data_venda + 'T12:00:00').toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                    <div className="font-mono font-semibold text-purple-700">
+                      {formatCurrency(valor)}
+                    </div>
+                  </Link>
+                )
+              })}
+              {nfsParaEmitir.length > 5 && (
+                <Link href="/vendas" className="text-xs text-purple-700 hover:underline block text-center">
+                  Ver mais {nfsParaEmitir.length - 5} NFs
+                </Link>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

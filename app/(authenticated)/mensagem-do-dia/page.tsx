@@ -18,6 +18,7 @@ export default function MensagemDoDiaPage() {
     atrasos: 0,
     em_andamento: 0,
     pagamentos_revisar: 0,
+    pagamentos_cobrar: 0,
     nfs_emitir: 0,
   })
   const [copiado, setCopiado] = useState(false)
@@ -48,6 +49,7 @@ export default function MensagemDoDiaPage() {
         atrasos: json.total_atrasos,
         em_andamento: json.total_em_andamento || 0,
         pagamentos_revisar: json.total_pagamentos_revisar || 0,
+        pagamentos_cobrar: json.total_pagamentos_cobrar || 0,
         nfs_emitir: json.total_nfs_emitir || 0,
       })
     } catch (err: any) {

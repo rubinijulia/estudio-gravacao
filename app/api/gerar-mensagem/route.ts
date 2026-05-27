@@ -66,6 +66,11 @@ export async function GET(request: NextRequest) {
       .gte('data_entrega_prevista', hojeStr)
       .order('data_entrega_prevista')
 
+    // Calcular data limite de 5 dias atrás (para cobrança)
+    const cincoDiasAtras = new Date()
+    cincoDiasAtras.setDate(cincoDiasAtras.getDate() - 5)
+    const cincoDiasAtrasStr = dateToLocalString(cincoDiasAtras)
+
     // Pagamentos para revisar (gravação realizada mas ainda não pago)
     const { data: pagamentosRevisar } = await admin
       .from('vendas')
@@ -74,11 +79,19 @@ export async function GET(request: NextRequest) {
       .in('status_pagamento', ['a_receber', 'sinal_pago'])
       .order('data_venda')
 
-    // NFs para emitir (gravação realizada mas NF não emitida)
-    const { data: nfsParaEmitir } = await admin
+    // 🚨 PAGAMENTOS PARA COBRAR: gravação há mais de 5 dias e não pago totalmente
+    const { data: pagamentosCobrar } = await admin
       .from('vendas')
       .select('*, clientes(nome)')
       .eq('status_servico', 'realizada')
+      .in('status_pagamento', ['a_receber', 'sinal_pago'])
+      .lte('data_venda', cincoDiasAtrasStr)
+      .order('data_venda')
+
+    // NFs para emitir (todas pendentes que não foram canceladas)
+    const { data: nfsParaEmitir } = await admin
+      .from('vendas')
+      .select('*, clientes(nome)')
       .eq('nf_emitida', false)
       .neq('status_pagamento', 'cancelado')
       .order('data_venda')
@@ -141,11 +154,27 @@ export async function GET(request: NextRequest) {
       mensagem += '\n'
     }
 
-    // Pagamentos para revisar
+    // 🔥 PAGAMENTOS PARA COBRAR URGENTE (gravação > 5 dias)
+    if (pagamentosCobrar && pagamentosCobrar.length > 0) {
+      let totalCobrar = 0
+      mensagem += `🔥 *COBRAR HOJE* (${pagamentosCobrar.length})\n`
+      mensagem += `_Gravação há mais de 5 dias sem pagamento total_\n`
+      pagamentosCobrar.forEach((v: any) => {
+        const total = Number(v.valor_total) - Number(v.desconto || 0)
+        const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
+        const pendente = total - pago
+        totalCobrar += pendente
+        const dias = Math.floor((new Date().getTime() - new Date(v.data_venda + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24))
+        mensagem += `• ${v.clientes?.nome} - R$ ${pendente.toFixed(2).replace('.', ',')} (${dias} dias)\n`
+      })
+      mensagem += `_Total a cobrar: R$ ${totalCobrar.toFixed(2).replace('.', ',')}_\n\n`
+    }
+
+    // Pagamentos para revisar (geral, todos)
     if (pagamentosRevisar && pagamentosRevisar.length > 0) {
       let totalPendente = 0
-      mensagem += `💰 *PAGAMENTOS PARA REVISAR* (${pagamentosRevisar.length})\n`
-      mensagem += `_Gravações já realizadas e ainda não recebidas_\n`
+      mensagem += `💰 *PAGAMENTOS PENDENTES* (${pagamentosRevisar.length})\n`
+      mensagem += `_Gravações realizadas, aguardando recebimento_\n`
       pagamentosRevisar.forEach((v: any) => {
         const total = Number(v.valor_total) - Number(v.desconto || 0)
         const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
@@ -208,6 +237,7 @@ export async function GET(request: NextRequest) {
       total_atrasos: atrasados?.length || 0,
       total_em_andamento: emAndamento?.length || 0,
       total_pagamentos_revisar: pagamentosRevisar?.length || 0,
+      total_pagamentos_cobrar: pagamentosCobrar?.length || 0,
       total_nfs_emitir: nfsParaEmitir?.length || 0,
     })
   } catch (err: any) {

@@ -27,6 +27,10 @@ export type Cliente = {
   cidade: string | null
   estado: string | null
   cadastro_completo: boolean
+  ativo: boolean
+  motivo_exclusao: string | null
+  data_exclusao: string | null
+  excluido_por: string | null
   created_at: string
   updated_at: string
 }

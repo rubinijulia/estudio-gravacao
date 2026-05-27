@@ -13,9 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Edit, Trash2, AlertCircle, Eye } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, AlertCircle, Eye, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { ClienteFormDialog } from './cliente-form-dialog'
+import { ExcluirClienteDialog } from './excluir-cliente-dialog'
 import { formatDate } from '@/lib/formatters'
 import { Badge } from '@/components/ui/badge'
 import { isCadastroCompleto, camposFaltando } from '@/lib/cliente'
@@ -25,17 +26,23 @@ export default function ClientesPage() {
   const [clientes, setClientes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [mostrarExcluidos, setMostrarExcluidos] = useState(false)
   const [openDialog, setOpenDialog] = useState(false)
+  const [openExcluirDialog, setOpenExcluirDialog] = useState(false)
   const [editingCliente, setEditingCliente] = useState<any>(null)
+  const [clienteParaExcluir, setClienteParaExcluir] = useState<any>(null)
 
   const supabase = createClient()
 
   async function loadClientes() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('clientes')
-      .select('*')
-      .order('nome')
+    let query = supabase.from('clientes').select('*').order('nome')
+
+    if (!mostrarExcluidos) {
+      query = query.or('ativo.is.null,ativo.eq.true')
+    }
+
+    const { data, error } = await query
 
     if (error) {
       toast.error('Erro ao carregar clientes')
@@ -48,17 +55,25 @@ export default function ClientesPage() {
 
   useEffect(() => {
     loadClientes()
-  }, [])
+  }, [mostrarExcluidos])
 
-  async function handleDelete(id: string) {
-    if (!confirm('Deseja realmente excluir este cliente?')) return
+  async function handleRestaurar(cliente: any) {
+    if (!confirm(`Restaurar o cliente "${cliente.nome}"?`)) return
 
-    const { error } = await supabase.from('clientes').delete().eq('id', id)
+    const { error } = await supabase
+      .from('clientes')
+      .update({
+        ativo: true,
+        motivo_exclusao: null,
+        data_exclusao: null,
+        excluido_por: null,
+      })
+      .eq('id', cliente.id)
 
     if (error) {
-      toast.error('Erro ao excluir cliente')
+      toast.error('Erro ao restaurar')
     } else {
-      toast.success('Cliente excluído com sucesso')
+      toast.success('Cliente restaurado!')
       loadClientes()
     }
   }
@@ -68,6 +83,8 @@ export default function ClientesPage() {
     c.email?.toLowerCase().includes(search.toLowerCase()) ||
     c.telefone?.includes(search)
   )
+
+  const excluidosCount = clientes.filter(c => c.ativo === false).length
 
   return (
     <div className="p-8">
@@ -85,7 +102,7 @@ export default function ClientesPage() {
       </div>
 
       <Card className="mb-6">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -95,6 +112,14 @@ export default function ClientesPage() {
               className="pl-10"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={mostrarExcluidos}
+              onChange={(e) => setMostrarExcluidos(e.target.checked)}
+            />
+            <span>Mostrar clientes excluídos {mostrarExcluidos && excluidosCount > 0 && `(${excluidosCount})`}</span>
+          </label>
         </CardContent>
       </Card>
 
@@ -123,9 +148,10 @@ export default function ClientesPage() {
                 {filteredClientes.map((cliente) => {
                   const completo = isCadastroCompleto(cliente)
                   const faltam = camposFaltando(cliente)
+                  const excluido = cliente.ativo === false
 
                   return (
-                    <TableRow key={cliente.id}>
+                    <TableRow key={cliente.id} className={excluido ? 'opacity-50' : ''}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {cliente.id.substring(0, 8)}
                       </TableCell>
@@ -133,12 +159,19 @@ export default function ClientesPage() {
                         <Link href={`/clientes/${cliente.id}`} className="hover:underline text-primary">
                           {cliente.nome}
                         </Link>
+                        {excluido && (
+                          <div className="text-xs text-muted-foreground italic">
+                            Excluído em {formatDate(cliente.data_exclusao)}: {cliente.motivo_exclusao}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>{cliente.email || '-'}</TableCell>
                       <TableCell>{cliente.telefone || '-'}</TableCell>
                       <TableCell>{cliente.cidade ? `${cliente.cidade}/${cliente.estado}` : '-'}</TableCell>
                       <TableCell>
-                        {!completo ? (
+                        {excluido ? (
+                          <Badge variant="secondary">Excluído</Badge>
+                        ) : !completo ? (
                           <div>
                             <Badge variant="destructive">
                               <AlertCircle className="h-3 w-3 mr-1" />
@@ -154,27 +187,40 @@ export default function ClientesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Link href={`/clientes/${cliente.id}`}>
-                            <Button variant="ghost" size="sm" title="Ver detalhes">
-                              <Eye className="h-4 w-4" />
+                          {excluido ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Restaurar"
+                              onClick={() => handleRestaurar(cliente)}
+                            >
+                              <RotateCcw className="h-4 w-4 text-blue-600" />
                             </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Editar"
-                            onClick={() => { setEditingCliente(cliente); setOpenDialog(true) }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Excluir"
-                            onClick={() => handleDelete(cliente.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          ) : (
+                            <>
+                              <Link href={`/clientes/${cliente.id}`}>
+                                <Button variant="ghost" size="sm" title="Ver detalhes">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Editar"
+                                onClick={() => { setEditingCliente(cliente); setOpenDialog(true) }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Excluir"
+                                onClick={() => { setClienteParaExcluir(cliente); setOpenExcluirDialog(true) }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -192,6 +238,17 @@ export default function ClientesPage() {
         cliente={editingCliente}
         onSuccess={() => {
           setOpenDialog(false)
+          loadClientes()
+        }}
+      />
+
+      <ExcluirClienteDialog
+        open={openExcluirDialog}
+        onOpenChange={setOpenExcluirDialog}
+        cliente={clienteParaExcluir}
+        onSuccess={() => {
+          setOpenExcluirDialog(false)
+          setClienteParaExcluir(null)
           loadClientes()
         }}
       />

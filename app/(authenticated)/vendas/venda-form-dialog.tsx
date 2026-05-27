@@ -259,7 +259,7 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{venda ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
           <DialogDescription>
@@ -317,55 +317,69 @@ export function VendaFormDialog({ open, onOpenChange, venda, onSuccess }: Props)
                 Nenhum item adicionado. Clique em "Adicionar" para incluir um serviço.
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {itens.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-end border rounded-lg p-3">
-                    <div className="col-span-4">
-                      <Label className="text-xs">Serviço</Label>
-                      <Autocomplete
-                        options={servicos.map(s => ({
-                          value: s.id,
-                          label: s.nome,
-                          description: `R$ ${Number(s.valor_padrao).toFixed(2)}`
-                        }))}
-                        value={item.servico_id || ''}
-                        onChange={(v) => selectServico(index, v)}
-                        placeholder="Buscar serviço..."
-                      />
+                  <div key={index} className="border rounded-lg p-4 space-y-3 relative">
+                    {/* Botão remover no canto */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeItem(index)}
+                      className="absolute top-2 right-2"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Serviço</Label>
+                        <Autocomplete
+                          options={servicos.map(s => ({
+                            value: s.id,
+                            label: s.nome,
+                            description: `R$ ${Number(s.valor_padrao).toFixed(2)}`
+                          }))}
+                          value={item.servico_id || ''}
+                          onChange={(v) => selectServico(index, v)}
+                          placeholder="Buscar serviço..."
+                        />
+                      </div>
+                      <div className="space-y-1 pr-10">
+                        <Label className="text-xs">Descrição</Label>
+                        <Input
+                          value={item.descricao}
+                          onChange={(e) => updateItem(index, 'descricao', e.target.value)}
+                          placeholder="Descrição"
+                        />
+                      </div>
                     </div>
-                    <div className="col-span-3">
-                      <Label className="text-xs">Descrição</Label>
-                      <Input
-                        value={item.descricao}
-                        onChange={(e) => updateItem(index, 'descricao', e.target.value)}
-                        placeholder="Descrição"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <Label className="text-xs">Qtd</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantidade}
-                        onChange={(e) => updateItem(index, 'quantidade', parseInt(e.target.value) || 1)}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-xs">Valor Unit.</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.valor_unitario}
-                        onChange={(e) => updateItem(index, 'valor_unitario', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="col-span-1 text-right text-sm font-mono">
-                      {formatCurrency(item.quantidade * item.valor_unitario)}
-                    </div>
-                    <div className="col-span-1">
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(index)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+
+                    <div className="grid grid-cols-3 gap-3 items-end">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Quantidade</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantidade}
+                          onChange={(e) => updateItem(index, 'quantidade', parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Valor Unitário (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={item.valor_unitario}
+                          onChange={(e) => updateItem(index, 'valor_unitario', parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="text-right">
+                        <Label className="text-xs">Total</Label>
+                        <div className="h-9 flex items-center justify-end font-mono font-semibold text-base">
+                          {formatCurrency(item.quantidade * item.valor_unitario)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}

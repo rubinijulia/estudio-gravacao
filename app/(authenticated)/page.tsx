@@ -105,19 +105,29 @@ export default function DashboardPage() {
         .order('data_entrega_prevista')
       setAtrasos(atr || [])
 
-      // Pagamentos para cobrar (gravação há +5 dias sem pagamento total)
+      // Pagamentos para confirmar:
+      // Regra 1: gravação realizada há +5 dias sem pagamento total
+      // Regra 2: venda há +15 dias (independente de gravar) sem pagamento total
       const cincoDiasAtras = new Date()
       cincoDiasAtras.setDate(cincoDiasAtras.getDate() - 5)
       const cincoDiasAtrasStr = dateToLocalString(cincoDiasAtras)
 
-      const { data: cobrar } = await supabase
+      const quinzeDiasAtras = new Date()
+      quinzeDiasAtras.setDate(quinzeDiasAtras.getDate() - 15)
+      const quinzeDiasAtrasStr = dateToLocalString(quinzeDiasAtras)
+
+      const { data: todasPendentes } = await supabase
         .from('vendas')
         .select('*, clientes(nome)')
-        .eq('status_servico', 'realizada')
         .in('status_pagamento', ['a_receber', 'sinal_pago'])
-        .lte('data_venda', cincoDiasAtrasStr)
         .order('data_venda')
-      setPagamentosCobrar(cobrar || [])
+
+      const cobrar = (todasPendentes || []).filter((v: any) => {
+        if (v.status_servico === 'realizada' && v.data_venda <= cincoDiasAtrasStr) return true
+        if (v.data_venda <= quinzeDiasAtrasStr) return true
+        return false
+      })
+      setPagamentosCobrar(cobrar)
 
       // NFs para emitir
       const { data: nfs } = await supabase
@@ -275,7 +285,7 @@ export default function DashboardPage() {
               🔍 {pagamentosCobrar.length} pagamento{pagamentosCobrar.length > 1 ? 's' : ''} para confirmar
             </CardTitle>
             <CardDescription className="text-yellow-700/80">
-              Gravação há +5 dias sem baixa total - verificar se já recebemos (pode ser só falta de atualizar no sistema)
+              Gravação +5 dias OU venda +15 dias sem pagamento total - verificar se já recebemos (talvez só falte dar baixa)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -285,6 +295,7 @@ export default function DashboardPage() {
                 const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
                 const pendente = total - pago
                 const dias = Math.floor((new Date().getTime() - new Date(v.data_venda + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24))
+                const motivo = v.status_servico === 'realizada' ? '🎬 Gravado' : '📅 Venda'
                 return (
                   <Link
                     key={v.id}
@@ -294,7 +305,7 @@ export default function DashboardPage() {
                     <div>
                       <div className="font-medium text-sm">{v.clientes?.nome}</div>
                       <div className="text-xs text-muted-foreground">
-                        {dias} dias da venda · {v.status_pagamento === 'sinal_pago' ? 'Sinal pago' : 'A receber'}
+                        {motivo} há {dias}d · {v.status_pagamento === 'sinal_pago' ? 'Sinal pago' : 'A receber'}
                       </div>
                     </div>
                     <div className="font-mono font-bold text-yellow-800">

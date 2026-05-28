@@ -66,10 +66,14 @@ export async function GET(request: NextRequest) {
       .gte('data_entrega_prevista', hojeStr)
       .order('data_entrega_prevista')
 
-    // Calcular data limite de 5 dias atrás (para cobrança)
+    // Datas limite
     const cincoDiasAtras = new Date()
     cincoDiasAtras.setDate(cincoDiasAtras.getDate() - 5)
     const cincoDiasAtrasStr = dateToLocalString(cincoDiasAtras)
+
+    const quinzeDiasAtras = new Date()
+    quinzeDiasAtras.setDate(quinzeDiasAtras.getDate() - 15)
+    const quinzeDiasAtrasStr = dateToLocalString(quinzeDiasAtras)
 
     // Pagamentos para revisar (gravação realizada mas ainda não pago)
     const { data: pagamentosRevisar } = await admin
@@ -79,14 +83,24 @@ export async function GET(request: NextRequest) {
       .in('status_pagamento', ['a_receber', 'sinal_pago'])
       .order('data_venda')
 
-    // 🚨 PAGAMENTOS PARA COBRAR: gravação há mais de 5 dias e não pago totalmente
-    const { data: pagamentosCobrar } = await admin
+    // 🔍 CONFIRMAR PAGAMENTO: gravação +5 dias OU venda +15 dias sem pagamento total
+    const { data: todasPendentes } = await admin
       .from('vendas')
       .select('*, clientes(nome)')
-      .eq('status_servico', 'realizada')
       .in('status_pagamento', ['a_receber', 'sinal_pago'])
-      .lte('data_venda', cincoDiasAtrasStr)
       .order('data_venda')
+
+    const pagamentosCobrar = (todasPendentes || []).filter((v: any) => {
+      // Regra 1: gravação realizada há +5 dias
+      if (v.status_servico === 'realizada' && v.data_venda <= cincoDiasAtrasStr) {
+        return true
+      }
+      // Regra 2: venda há +15 dias (independente de gravar)
+      if (v.data_venda <= quinzeDiasAtrasStr) {
+        return true
+      }
+      return false
+    })
 
     // NFs para emitir (todas pendentes que não foram canceladas)
     const { data: nfsParaEmitir } = await admin
@@ -154,20 +168,21 @@ export async function GET(request: NextRequest) {
       mensagem += '\n'
     }
 
-    // 🔍 CONFIRMAR PAGAMENTO (gravação > 5 dias sem baixa total)
+    // 🔍 CONFIRMAR PAGAMENTO (gravação +5 dias OU venda +15 dias sem pagamento)
     if (pagamentosCobrar && pagamentosCobrar.length > 0) {
       let totalConfirmar = 0
       mensagem += `🔍 *CONFIRMAR PAGAMENTO* (${pagamentosCobrar.length})\n`
-      mensagem += `_Gravação há +5 dias sem baixa total no sistema - verificar se já recebemos_\n`
+      mensagem += `_Verificar se já recebemos (pode ser só falta de baixa no sistema)_\n`
       pagamentosCobrar.forEach((v: any) => {
         const total = Number(v.valor_total) - Number(v.desconto || 0)
         const pago = v.status_pagamento === 'sinal_pago' ? Number(v.valor_sinal || 0) : 0
         const pendente = total - pago
         totalConfirmar += pendente
         const dias = Math.floor((new Date().getTime() - new Date(v.data_venda + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24))
-        mensagem += `• ${v.clientes?.nome} - R$ ${pendente.toFixed(2).replace('.', ',')} (${dias} dias)\n`
+        const motivo = v.status_servico === 'realizada' ? '🎬 gravado' : '📅 venda'
+        mensagem += `• ${v.clientes?.nome} - R$ ${pendente.toFixed(2).replace('.', ',')} (${dias}d, ${motivo})\n`
       })
-      mensagem += `_Total a confirmar: R$ ${totalConfirmar.toFixed(2).replace('.', ',')}_\n\n`
+      mensagem += `_Total: R$ ${totalConfirmar.toFixed(2).replace('.', ',')}_\n\n`
     }
 
     // Pagamentos para revisar (geral, todos)
